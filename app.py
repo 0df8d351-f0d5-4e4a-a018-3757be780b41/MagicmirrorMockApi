@@ -1,6 +1,8 @@
 from flask import Flask
 from flask import request
-from flask import abort
+from PIL import Image
+from io import BytesIO
+from base64 import b64encode
 import time
 import random
 
@@ -113,6 +115,53 @@ def mock_score_multi_image_test():
 
     # time.sleep(3)
     # abort(500, 'server error')
+
+    print(response)
+    return response
+
+
+@app.route('/MockScoreMultiImageHeatMap', methods=['POST'])
+def mock_score_multi_image_heatmap():
+
+    response = {
+        "timestamp": int(round(time.time() * 1000)),
+        "files": []
+    }
+
+    for file in request.files:
+
+        filedata = request.files[file]
+        filename = filedata.filename
+
+        image = Image.open(filedata)
+        # resized = image.resize((100, 100))  # doesn't keep aspect ratio, non-destructive
+        image.thumbnail((100, 100))  # keeps aspect ratio, sizes must be smaller than original, destructive
+
+        buffered = BytesIO()
+        image.save(buffered, format=image.format)
+        b64_bytes = b64encode(buffered.getvalue())
+        heatmap = b64_bytes.decode('utf-8')
+
+        rank = random.randrange(40, 80) / 100.0
+
+        item = {
+            "fileid": file,
+            "filename": filename,
+            "heatmap": heatmap,
+            "rank": rank,
+            "rankmap": {
+                "popularity": rank,
+                "aesthetic": random.randrange(40, 80) / 100.0,
+                "technical": random.randrange(40, 80) / 100.0,
+                "usa": random.randrange(40, 80) / 100.0,
+                "uk": random.randrange(40, 80) / 100.0,
+                "north_europe": random.randrange(40, 80) / 100.0,
+                "south_europe": random.randrange(40, 80) / 100.0,
+                "china": random.randrange(40, 80) / 100.0,
+                "japan": random.randrange(40, 80) / 100.0
+            }
+        }
+        response["files"].append(item)
 
     print(response)
     return response
