@@ -5,6 +5,7 @@ from io import BytesIO
 from base64 import b64encode
 import time
 import random
+import json
 
 app = Flask(__name__)
 
@@ -120,7 +121,7 @@ def mock_score_multi_image_test():
     return response
 
 
-@app.route('/MockScoreMultiImageHeatMap', methods=['POST'])
+@app.route('/MockScoreMultiImageHeatmap', methods=['POST'])
 def mock_score_multi_image_heatmap():
 
     response = {
@@ -164,6 +165,60 @@ def mock_score_multi_image_heatmap():
         response["files"].append(item)
 
     print(response)
+    return response
+
+
+@app.route('/MockScoreMultiImageHeatmapSize', methods=['POST'])
+def mock_score_multi_image_heatmap_size():
+
+    nfiles = int(request.args.get('nfiles'))
+    filesize = int(request.args.get('filesize'))
+
+    response = {
+        "timestamp": int(round(time.time() * 1000)),
+        "files": [],
+        "_filecount": nfiles,
+        "_filesize": filesize
+    }
+
+    filedata = request.files["image"]
+    filename = filedata.filename
+
+    image = Image.open(filedata)
+    # resized = image.resize((filesize, filesize))  # doesn't keep aspect ratio, non-destructive
+    image.thumbnail((filesize, filesize))  # keeps aspect ratio, sizes must be smaller than original, destructive
+
+    buffered = BytesIO()
+    image.save(buffered, format=image.format)
+    b64_bytes = b64encode(buffered.getvalue())
+    heatmap = b64_bytes.decode('utf-8')
+
+    rank = random.randrange(40, 80) / 100.0
+
+    for n in range(nfiles):
+        item = {
+            "fileid": n + 1,
+            "filename": filename,
+            "heatmap": heatmap,
+            "rank": rank,
+            "rankmap": {
+                "popularity": rank,
+                "aesthetic": random.randrange(40, 80) / 100.0,
+                "technical": random.randrange(40, 80) / 100.0,
+                "usa": random.randrange(40, 80) / 100.0,
+                "uk": random.randrange(40, 80) / 100.0,
+                "north_europe": random.randrange(40, 80) / 100.0,
+                "south_europe": random.randrange(40, 80) / 100.0,
+                "china": random.randrange(40, 80) / 100.0,
+                "japan": random.randrange(40, 80) / 100.0
+            }
+        }
+        response["files"].append(item)
+
+    json_obj = json.dumps(response)
+    mb = len(json_obj) / 1000000.0
+    response["_jsonsize(MB)"] = round(mb, 2)
+
     return response
 
 
